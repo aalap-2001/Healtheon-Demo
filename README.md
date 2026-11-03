@@ -1,13 +1,9 @@
 # Healtheon Demo — Case Processing (Voiceover)
 
-Interactive voiceover demo of Healtheon's AI agents processing a case end to end:
-Clean Case, Claim Denial, and PA Denial.
-
-**Live demo:** published from `index.html` with GitHub Pages (Settings → Pages → Deploy from a branch → `main`, `/ (root)`).
+Interactive voiceover demo of Healtheon's AI agents processing a case end to end: Clean Case, Claim Denial and PA Denial.
 
 ## Leaving feedback
-Click **💬 Comment on this page** (bottom right). Comments are tagged with the section on screen.
-On GitHub Pages, comments are saved in your browser. Use **Download CSV** in the comment panel and send the file to the demo owner.
+Click **💬 Comment on this page** (bottom right). Your comment is tagged with the section on screen and shared with everyone reviewing within a few seconds.
 
 ## Controls
 - Start screen: Clean Case, Claim Denial, PA Denial, or Play full demo

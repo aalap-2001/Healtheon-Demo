@@ -1471,7 +1471,10 @@ document.addEventListener('click',e=>{
 </script>
 
 <!-- ═════════ Reviewer comments (commentable build only) ═════════ -->
-<!-- Static form so Netlify Forms can detect it at deploy time; comments are posted to it with fetch(). -->
+<!-- Shared comments: on GitHub Pages (or any host) they are stored in the Google Sheet whose web-app URL is set in
+     feedback-config.js, and every reviewer's page checks it every few seconds. On claude.ai they use the artifact's
+     shared store. With neither, they fall back to Netlify Forms + this browser. -->
+<script src="feedback-config.js"></script>
 <form name="demo-feedback" data-netlify="true" netlify-honeypot="bot-field" hidden>
   <input type="hidden" name="form-name" value="demo-feedback">
   <input name="bot-field"><input name="section"><input name="section-key"><input name="name"><textarea name="comment"></textarea><input name="submitted-at">
@@ -1479,9 +1482,13 @@ document.addEventListener('click',e=>{
 <style>
 #fb-btn{position:fixed;right:288px;bottom:20px;z-index:90;display:flex;align-items:center;gap:8px;padding:9px 16px;border-radius:22px;border:1px solid var(--vi);background:var(--su);color:var(--vi);font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;box-shadow:0 6px 22px #0004}
 #fb-btn:hover{background:var(--vi-a)}
+#fb-btn:focus-visible,#fb button:focus-visible{outline:2px solid var(--vi);outline-offset:2px}
+#fb-btn.ping{box-shadow:0 0 0 4px var(--vi-b),0 6px 22px #0004}
 #fb-cnt{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--vi);color:var(--su);font-size:10px;display:none;align-items:center;justify-content:center}
 #fb-cnt.on{display:inline-flex}
-#fb{position:fixed;right:288px;bottom:70px;z-index:91;width:360px;max-height:calc(100vh - 170px);display:none;flex-direction:column;background:var(--su);border:1px solid var(--bd);border-top:3px solid var(--vi);border-radius:4px;box-shadow:0 14px 40px #0006;font-family:var(--sans)}
+#fb-live{width:7px;height:7px;border-radius:50%;background:var(--gn);display:none}
+#fb-live.on{display:inline-block}
+#fb{position:fixed;right:288px;bottom:70px;z-index:91;width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 170px);display:none;flex-direction:column;background:var(--su);border:1px solid var(--bd);border-top:3px solid var(--vi);border-radius:4px;box-shadow:0 14px 40px #0006;font-family:var(--sans)}
 #fb.on{display:flex}
 .fb-hd{padding:12px 14px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;gap:10px}
 .fb-hd-t{flex:1;min-width:0}
@@ -1491,6 +1498,8 @@ document.addEventListener('click',e=>{
 .fb-x:hover{color:var(--t1)}
 .fb-note{font-size:10.5px;color:var(--am);padding:6px 14px 0;display:none}
 .fb-note.on{display:block}
+.fb-mode{font-size:10.5px;color:var(--t3);padding:6px 14px 0;line-height:1.4}
+.fb-mode.live{color:var(--gn)}
 .fb-form{padding:10px 14px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--bd)}
 .fb-form input,.fb-form textarea{width:100%;font-family:var(--sans);font-size:12px;color:var(--t1);background:var(--su2);border:1px solid var(--bd);border-radius:3px;padding:7px 9px;outline:none}
 .fb-form input:focus,.fb-form textarea:focus{border-color:var(--vi)}
@@ -1504,22 +1513,26 @@ document.addEventListener('click',e=>{
 .fb-empty{font-size:11px;color:var(--t3);font-style:italic;padding:10px 14px}
 .fb-c{padding:9px 14px;border-bottom:1px solid var(--bd)}
 .fb-c:last-child{border-bottom:none}
-.fb-c-h{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--t3);margin-bottom:3px;font-family:var(--mono)}
-.fb-c-n{font-weight:700;color:var(--t2);font-family:var(--sans);font-size:11px}
+.fb-c-h{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10px;color:var(--t3);margin-bottom:3px;font-family:var(--mono)}
+.fb-c-n{font-weight:700;color:var(--t2);font-family:var(--sans);font-size:11px;display:flex;align-items:center;gap:6px;min-width:0}
+.fb-c-n img{width:16px;height:16px;border-radius:50%;flex-shrink:0}
 .fb-c-s{font-size:10px;color:var(--vi);margin-bottom:3px}
 .fb-c-t{font-size:12px;color:var(--t1);line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+.fb-del{background:none;border:none;color:var(--t3);font-family:var(--sans);font-size:10px;cursor:pointer;padding:0 0 0 6px}
+.fb-del:hover{color:var(--rd)}
 .fb-ft{padding:9px 14px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .fb-lnk{background:none;border:none;color:var(--vi);font-family:var(--sans);font-size:11px;font-weight:700;cursor:pointer;padding:0}
 .fb-lnk:hover{text-decoration:underline}
 </style>
 
-<button id="fb-btn" type="button" title="Leave a comment on the section on screen">💬 <span>Comment on this page</span><span id="fb-cnt"></span></button>
+<button id="fb-btn" type="button" title="Leave a comment on the section on screen">💬 <span>Comment on this page</span><span id="fb-live" title="Live: comments are shared with everyone reviewing"></span><span id="fb-cnt"></span></button>
 <div id="fb" role="dialog" aria-label="Comments">
   <div class="fb-hd">
     <div class="fb-hd-t"><div class="fb-ey" id="fb-ey">Comment on</div><div class="fb-sec" id="fb-sec">—</div></div>
     <button class="fb-x" id="fb-close" type="button" title="Close">✕</button>
   </div>
   <div class="fb-note" id="fb-note">Demo paused while you comment · it resumes when you close this box</div>
+  <div class="fb-mode" id="fb-mode">Comments are saved in this browser</div>
   <div class="fb-form" id="fb-form">
     <input id="fb-name" type="text" placeholder="Your name" maxlength="80" autocomplete="name">
     <textarea id="fb-text" placeholder="What works, what doesn't, what's unclear on this page…" maxlength="4000"></textarea>
@@ -1532,14 +1545,16 @@ document.addEventListener('click',e=>{
 <script>
 'use strict';
 (()=>{
-  const KEY='healtheon-demo-feedback',NKEY='healtheon-demo-reviewer';
+  const KEY='healtheon-demo-feedback',NKEY='healtheon-demo-reviewer',COLL='feedback';
   const $=id=>document.getElementById(id);
-  const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return [];}};
-  const save=a=>{try{localStorage.setItem(KEY,JSON.stringify(a));}catch(e){}};
   const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  let comments=load(),showAll=false,pausedByUs=false,sec={key:'start',label:'Start screen'};
+  const loadLocal=()=>{try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return [];}};
+  const saveLocal=a=>{try{localStorage.setItem(KEY,JSON.stringify(a));}catch(e){}};
 
-  // Which page of the demo is on screen right now
+  // live = shared store on claude.ai; local = this browser (+ Netlify Forms when hosted there)
+  let mode='local',db=null,user=null,me=null,isOwner=false,canWrite=true,downloads=null,sheetUrl=null;
+  let comments=loadLocal(),names={},showAll=false,pausedByUs=false,sec={key:'start',label:'Start screen'},seen=null;
+
   function section(){
     const st=$('start');
     if(st&&getComputedStyle(st).display!=='none')return{key:'start',label:'Start screen'};
@@ -1551,52 +1566,162 @@ document.addEventListener('click',e=>{
   }
   const fmt=iso=>{const d=new Date(iso);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});};
 
-  function render(){
-    const list=showAll?comments:comments.filter(c=>c.key===sec.key);
+  // Names are resolved from ids at render time (never stored) in live mode
+  async function resolveNames(list){
+    if(mode!=='live'||!user)return;
+    const ids=[...new Set(list.map(c=>c.author).filter(Boolean))];
+    if(!ids.length)return;
+    try{names=await user.profiles(ids);}catch(e){}
+  }
+  const who=c=>mode==='live'?((c.author&&names[c.author]&&names[c.author].name)||(c.author&&c.author===me?'You':'Someone')):(c.name||'Anonymous')+(mode==='sheet'&&mine.has(c.id)?' (you)':'');
+
+  async function render(){
+    const list=(showAll?comments:comments.filter(c=>c.key===sec.key)).slice().sort((a,b)=>a.at<b.at?1:-1);
+    await resolveNames(list);
     $('fb-ey').textContent=showAll?'All feedback':'Comment on';
     $('fb-sec').textContent=showAll?`${comments.length} comment${comments.length===1?'':'s'} across the demo`:sec.label;
     $('fb-form').style.display=showAll?'none':'';
     $('fb-all').textContent=showAll?'← Back to this page':`All feedback (${comments.length})`;
-    $('fb-list').innerHTML=list.length?list.slice().reverse().map(c=>`<div class="fb-c"><div class="fb-c-h"><span class="fb-c-n">${esc(c.name||'Anonymous')}</span><span>${fmt(c.at)}${c.sent?' · sent':''}</span></div>${showAll?`<div class="fb-c-s">${esc(c.label)}</div>`:''}<div class="fb-c-t">${esc(c.text)}</div></div>`).join(''):`<div class="fb-empty">${showAll?'No feedback yet.':'No comments on this page yet.'}</div>`;
-    const n=comments.length;$('fb-cnt').textContent=n;$('fb-cnt').classList.toggle('on',n>0);
+    const box=$('fb-list');box.innerHTML='';
+    if(!list.length){box.innerHTML=`<div class="fb-empty">${showAll?'No feedback yet.':'No comments on this page yet. Be the first.'}</div>`;}
+    for(const c of list){
+      const el=document.createElement('div');el.className='fb-c';
+      const canDel=mode==='live'?(canWrite&&(isOwner||(me&&c.author===me))):mode==='sheet'?mine.has(c.id):true;
+      el.innerHTML=`<div class="fb-c-h"><span class="fb-c-n"></span><span>${esc(fmt(c.at))}${mode==='local'&&c.sent?' · sent':''}${canDel?'<button class="fb-del" type="button" title="Delete this comment">Delete</button>':''}</span></div>${showAll?`<div class="fb-c-s">${esc(c.label)}</div>`:''}<div class="fb-c-t"></div>`;
+      const n=el.querySelector('.fb-c-n');
+      if(mode==='live'&&c.author&&names[c.author]){const img=document.createElement('img');img.src=names[c.author].avatarUrl;img.alt='';n.appendChild(img);}
+      n.appendChild(document.createTextNode(who(c)));
+      el.querySelector('.fb-c-t').textContent=c.text;
+      const d=el.querySelector('.fb-del');if(d)d.addEventListener('click',()=>remove(c,d));
+      box.appendChild(el);
+    }
+    const t=comments.length;$('fb-cnt').textContent=t;$('fb-cnt').classList.toggle('on',t>0);
   }
+  function setMode(){
+    const m=$('fb-mode');
+    if(mode==='live'){m.className='fb-mode live';m.textContent=canWrite?'● Live · everyone reviewing sees these comments instantly':'● Live · you can read comments; ask the owner for Contributor access to add yours';}
+    else if(mode==='sheet'){m.className='fb-mode live';m.textContent='● Shared · everyone reviewing sees new comments within a few seconds';}
+    else{m.className='fb-mode';m.textContent='Comments are saved in this browser · use “Download CSV” to share them';}
+    $('fb-live').classList.toggle('on',mode==='live'||mode==='sheet');
+    $('fb-name').style.display=mode==='live'?'none':'';
+    $('fb-text').disabled=$('fb-send').disabled=(mode==='live'&&!canWrite);
+  }
+
   function open(){
     sec=section();showAll=false;$('fb-st').textContent='';$('fb-st').className='fb-st';
-    // pause the demo so it doesn't move on while the reviewer types
     pausedByUs=false;
     if(!$('pp').disabled&&!paused){setPaused(true);pausedByUs=true;}
     $('fb-note').classList.toggle('on',pausedByUs);
-    $('fb').classList.add('on');render();
-    setTimeout(()=>($('fb-name').value?$('fb-text'):$('fb-name')).focus(),30);
+    $('fb').classList.add('on');$('fb-btn').classList.remove('ping');setMode();render();
+    setTimeout(()=>((mode!=='live'&&!$('fb-name').value)?$('fb-name'):$('fb-text')).focus(),30);
   }
   function close(){$('fb').classList.remove('on');if(pausedByUs&&paused)setPaused(false);pausedByUs=false;}
 
   async function send(){
-    const text=$('fb-text').value.trim(),name=$('fb-name').value.trim();
+    const text=$('fb-text').value.trim();
     if(!text){$('fb-text').focus();return;}
-    try{localStorage.setItem(NKEY,name);}catch(e){}
-    const c={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),key:sec.key,label:sec.label,name,text,at:new Date().toISOString(),sent:false};
-    comments.push(c);save(comments);$('fb-text').value='';render();
     const st=$('fb-st');$('fb-send').disabled=true;st.className='fb-st';st.textContent='Sending…';
-    // Post to Netlify Forms when hosted; otherwise the comment stays saved in this browser
+    if(mode==='live'){
+      try{
+        await db.collection(COLL).add({key:sec.key,label:sec.label,text,at:new Date().toISOString(),author:me||null});
+        $('fb-text').value='';st.className='fb-st ok';st.textContent='Posted · visible to everyone reviewing';
+      }catch(e){
+        st.className='fb-st warn';
+        if(e&&e.code==='invalid_argument'){canWrite=false;setMode();st.textContent='Your access level can only read comments. Ask the owner for Contributor access.';}
+        else if(e&&e.code==='quota_exceeded')st.textContent='The comment store is full. Ask the owner to clear old comments.';
+        else st.textContent='Couldn’t post just now. Your text is still here; try Send again.';
+      }
+      $('fb-send').disabled=!canWrite;return;
+    }
+    const name=$('fb-name').value.trim();try{localStorage.setItem(NKEY,name);}catch(e){}
+    if(mode==='sheet'){
+      try{
+        const r=await sheetCall({action:'add',key:sec.key,label:sec.label,text,name,cid:clientId()});
+        if(!r.ok)throw new Error(r.error||'rejected');
+        mine.add(r.id);saveMine();
+        comments.push({id:r.id,key:sec.key,label:sec.label,text,name,at:r.at});
+        $('fb-text').value='';st.className='fb-st ok';st.textContent='Posted · everyone will see it within a few seconds';render();
+      }catch(e){st.className='fb-st warn';st.textContent='Couldn’t post just now. Your text is still here; try Send again.';}
+      $('fb-send').disabled=false;return;
+    }
+    // local mode: keep in this browser, and post to Netlify Forms when hosted there
+    const c={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),key:sec.key,label:sec.label,name,text,at:new Date().toISOString(),sent:false};
+    comments.push(c);saveLocal(comments);$('fb-text').value='';render();
     let ok=false;
     if(/^https?:$/.test(location.protocol)){
-      try{
-        const r=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-          body:new URLSearchParams({'form-name':'demo-feedback','section':c.label,'section-key':c.key,'name':name,'comment':text,'submitted-at':c.at}).toString()});
-        ok=r.ok;
-      }catch(e){ok=false;}
+      try{const r=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({'form-name':'demo-feedback','section':c.label,'section-key':c.key,'name':name,'comment':text,'submitted-at':c.at}).toString()});ok=r.ok;}catch(e){ok=false;}
     }
-    if(ok){c.sent=true;save(comments);st.className='fb-st ok';st.textContent='Sent ✓ Thank you!';}
+    if(ok){c.sent=true;saveLocal(comments);st.className='fb-st ok';st.textContent='Sent ✓ Thank you!';}
     else{st.className='fb-st warn';st.textContent='Saved in this browser · use “Download CSV” to share it';}
     $('fb-send').disabled=false;render();
   }
-  function download(){
+  async function remove(c,btn){
+    if(btn.dataset.confirm!=='1'){btn.dataset.confirm='1';btn.textContent='Confirm delete?';setTimeout(()=>{if(btn.isConnected){btn.dataset.confirm='';btn.textContent='Delete';}},4000);return;}
+    if(mode==='live'){try{await db.collection(COLL).doc(c.id).delete();}catch(e){$('fb-st').className='fb-st warn';$('fb-st').textContent='Couldn’t delete that comment.';}}
+    else if(mode==='sheet'){try{const r=await sheetCall({action:'delete',id:c.id,cid:clientId()});if(!r.ok)throw 0;comments=comments.filter(x=>x.id!==c.id);mine.delete(c.id);saveMine();render();}catch(e){$('fb-st').className='fb-st warn';$('fb-st').textContent='Couldn’t delete that comment.';}}
+    else{comments=comments.filter(x=>x.id!==c.id);saveLocal(comments);render();}
+  }
+  async function download(){
+    if(mode==='live')await resolveNames(comments);
     const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
-    const rows=[['Submitted at','Reviewer','Section','Comment','Sent online'],...comments.map(c=>[c.at,c.name,c.label,c.text,c.sent?'yes':'no'])];
-    const blob=new Blob(['﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='healtheon-demo-feedback.csv';document.body.appendChild(a);a.click();
-    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+    const rows=[['Submitted at','Reviewer','Section','Comment'],...comments.slice().sort((a,b)=>a.at<b.at?-1:1).map(c=>[c.at,who(c),c.label,c.text])];
+    const csv='﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n');
+    if(downloads){try{await downloads.save({filename:'healtheon-demo-feedback.csv',data:csv});}catch(e){}return;}
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='healtheon-demo-feedback.csv';
+    document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  }
+
+  // Switch to the shared live store when this page runs on claude.ai
+  async function goLive(){
+    const cl=window.claude;if(!cl||typeof cl.use!=='function')return goSheet();
+    let d,u,dl;try{[d,u,dl]=await Promise.all([cl.use('db'),cl.use('user'),cl.use('downloads')]);}catch(e){return;}
+    downloads=dl||null;
+    if(!d)return goSheet();
+    db=d;user=u||null;mode='live';comments=[];
+    if(user){me=await user.id();isOwner=await user.isOwner();const w=await user.can('data.write');if(w===false)canWrite=false;}
+    setMode();render();
+    const slow=setTimeout(()=>{if(mode==='live'&&!comments.length){$('fb-mode').className='fb-mode';$('fb-mode').textContent='Can’t reach shared comments yet · new ones will appear when the connection returns';}},10000);
+    db.collection(COLL).onSnapshot(snap=>{
+      if(!snap.metadata.fromCache){clearTimeout(slow);setMode();}
+      comments=snap.docs.map(s=>{const v=s.data()||{};return{id:s.id,key:String(v.key||'general'),label:String(v.label||'General'),text:String(v.text||''),at:String(v.at||''),author:v.author?String(v.author):null};});
+      // nudge the button when someone else adds a comment while the box is closed
+      const ids=new Set(comments.map(c=>c.id));
+      if(seen&&!$('fb').classList.contains('on')&&comments.some(c=>!seen.has(c.id)&&c.author!==me))$('fb-btn').classList.add('ping');
+      seen=ids;render();
+    },err=>{clearTimeout(slow);$('fb-mode').className='fb-mode';$('fb-mode').textContent='Shared comments are unavailable right now.';});
+  }
+
+  // ── Google Sheet backend (GitHub Pages or any host) ──
+  // This browser's id and the ids of comments it posted, so reviewers can delete only their own.
+  const CKEY='healtheon-demo-client',MKEY='healtheon-demo-mine';
+  function clientId(){let v=null;try{v=localStorage.getItem(CKEY);}catch(e){}if(!v){v='c-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);try{localStorage.setItem(CKEY,v);}catch(e){}}return v;}
+  let mine=new Set();try{mine=new Set(JSON.parse(localStorage.getItem(MKEY)||'[]'));}catch(e){}
+  const saveMine=()=>{try{localStorage.setItem(MKEY,JSON.stringify([...mine]));}catch(e){}};
+  // text/plain keeps the request "simple", so the browser sends it to Apps Script without a CORS preflight
+  async function sheetCall(body){const r=await fetch(sheetUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});return r.json();}
+  async function pull(){
+    try{
+      const r=await fetch(sheetUrl+(sheetUrl.includes('?')?'&':'?')+'t='+Date.now());const j=await r.json();
+      if(!j.ok||!Array.isArray(j.comments))throw 0;
+      const next=j.comments.map(v=>({id:String(v.id),key:String(v.key||'general'),label:String(v.label||'General'),text:String(v.text||''),name:String(v.name||''),at:String(v.at||'')}));
+      const ids=new Set(next.map(c=>c.id));
+      if(seen&&!$('fb').classList.contains('on')&&next.some(c=>!seen.has(c.id)&&!mine.has(c.id)))$('fb-btn').classList.add('ping');
+      const changed=next.length!==comments.length||next.some((c,i)=>!comments[i]||comments[i].id!==c.id);
+      seen=ids;comments=next;if(mode!=='sheet'){mode='sheet';setMode();}
+      if(changed)render();
+      return true;
+    }catch(e){return false;}
+  }
+  async function goSheet(){
+    const u=window.HEALTHEON_FEEDBACK_SHEET_URL;
+    if(!u||!/^https:\/\/script\.google(usercontent)?\.com\//.test(u))return;
+    sheetUrl=u;comments=[];
+    const ok=await pull();
+    if(!ok){mode='local';comments=loadLocal();setMode();$('fb-mode').textContent='Shared comments couldn’t be reached · saving in this browser for now';render();}
+    // check for new comments every 5 s while the tab is visible
+    setInterval(()=>{if(!document.hidden)pull();},5000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull();});
   }
 
   try{$('fb-name').value=localStorage.getItem(NKEY)||'';}catch(e){}
@@ -1607,6 +1732,6 @@ document.addEventListener('click',e=>{
   $('fb-dl').addEventListener('click',download);
   // Typing in the box must not trigger the demo's Space = pause/play shortcut
   $('fb').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')close();if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))send();});
-  render();
+  setMode();render();goLive();
 })();
 </script>
